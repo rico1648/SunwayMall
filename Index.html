@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Course Navigator: AI for Mall Managers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Warm neutrals: beige, off-white; Complements: slate gray, dark teal; Accent: soft amber) -->
+    <!-- Application Structure Plan: A single-page dashboard design titled "Gemini Course Navigator". The core architecture features a toggleable view between a "Full Schedule" timeline and an interactive "Department View". The Department View allows users to filter the course modules by their specific department (e.g., Marketing, HR, Finance) using clickable filter buttons. This task-oriented, filterable structure was chosen over a linear document layout to provide immediate, personalized relevance to managers from different departments, allowing them to quickly access the content that matters most to them without navigating through irrelevant information. -->
+    <!-- Visualization & Content Choices: Report Info: Hierarchical course schedule. Goal: Provide overview and detailed exploration. Viz/Presentation: Modules are presented as interactive cards. A Doughnut chart (Chart.js) visualizes the module distribution per day (Day 1 vs. Day 2) for a high-level summary. Interaction: JavaScript-powered filtering by department and toggling between views. Justification: Cards modularize content for easy digestion. Filtering provides a personalized user journey. The chart adds a quick visual summary without violating the no-SVG constraint. Library/Method: HTML/Tailwind for structure, Chart.js (Canvas) for the chart, Vanilla JS for all interactions. CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .active-tab {
+            border-bottom-color: #f59e0b; /* amber-500 */
+            color: #f59e0b;
+        }
+        .active-filter {
+            background-color: #0d9488; /* teal-600 */
+            color: white;
+            border-color: #0d9488;
+        }
+        .prompt-code {
+            background-color: #1f2937; /* gray-800 */
+            color: #d1d5db; /* gray-300 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">AI for Mall Managers</h1>
+            <p class="mt-2 text-lg text-gray-600">Interactive Course Navigator for Google Gemini Workshop</p>
+        </header>
+
+        <main>
+            <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    <div class="md:col-span-2">
+                        <h2 class="text-2xl font-bold text-teal-700 mb-4">About This Course</h2>
+                        <p class="text-gray-700 leading-relaxed">
+                            This intensive 2-day workshop introduces managers from Sunway Carnival Mall to the transformative power of Google Gemini. This interactive navigator allows you to explore the full schedule or filter by your specific department to see the hands-on exercises and prompts designed to streamline your daily operations.
+                        </p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="courseBreakdownChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="flex -mb-px space-x-6" id="view-tabs">
+                        <button data-view="schedule" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300 active-tab">Full Schedule</button>
+                        <button data-view="department" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300">By Department</button>
+                    </nav>
+                </div>
+
+                <div id="schedule-view">
+                    <div class="mb-8">
+                        <h3 class="text-2xl font-bold text-center text-teal-700 mb-6">Day 1: Foundational Skills & Core Applications</h3>
+                        <div id="day-1-modules" class="space-y-4"></div>
+                    </div>
+                     <div>
+                        <h3 class="text-2xl font-bold text-center text-teal-700 mb-6">Day 2: Operational Efficiency & Advanced Applications</h3>
+                        <div id="day-2-modules" class="space-y-4"></div>
+                    </div>
+                </div>
+
+                <div id="department-view" class="hidden">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-center text-teal-700 mb-4">Filter by Your Department</h3>
+                        <div id="department-filters" class="flex flex-wrap justify-center gap-2">
+                        </div>
+                    </div>
+                    <div id="filtered-modules" class="space-y-4"></div>
+                     <div id="no-results" class="text-center py-10 hidden">
+                        <p class="text-gray-500 text-lg">Select a department to see relevant modules.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500">
+            <p>&copy; 2025 Sunway Carnival Mall. All rights reserved.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const courseData = [
+                // Day 1
+                { day: 1, time: '9:00 AM - 10:15 AM', title: 'Understanding Generative AI and Google Gemini', department: 'General', content: `<strong>Lecture:</strong> What is Generative AI? How does it differ from traditional AI?<br><strong>Lecture:</strong> Introduction to Google Gemini: Its core capabilities (text generation, summarization, brainstorming, ideation, basic textual analysis).<br><strong>Discussion:</strong> Ethical considerations, data privacy (emphasizing not inputting sensitive personal data), limitations, and responsible AI usage.<br><strong>Hands-on Exercise:</strong> Basic "Hello, Gemini!" – Participants will ask Gemini simple questions about general knowledge or current events to get accustomed to the interface and response style.<br><div class="prompt-code"><strong>Sample Prompt:</strong> "Tell me three interesting facts about the history of shopping malls."</div>` },
+                { day: 1, time: '10:15 AM - 11:30 AM', title: 'Mastering Prompt Engineering for Gemini', department: 'General', content: `<strong>Lecture:</strong> The art of crafting effective prompts: clarity, context, constraints, and desired output format.<br><strong>Lecture:</strong> Techniques for refining prompts: iterative prompting, providing examples, role-playing for Gemini.<br><strong>Hands-on Exercise:</strong> Brainstorming Mall Event Ideas<br><strong>Task:</strong> Use Gemini to brainstorm creative event ideas for a specific upcoming season or holiday at Sunway Carnival Mall.<br><strong>Gemini Benefit:</strong> Rapid ideation and creative content generation.<br><div class="prompt-code"><strong>Sample Prompt:</strong> "Act as a marketing consultant for a large shopping mall. Brainstorm 5 unique and engaging event ideas for the upcoming [e.g., Hari Raya / Christmas / School Holiday] period, suitable for families. For each idea, provide a brief description, target audience, and potential key activities."</div>` },
+                { day: 1, time: '11:45 AM - 12:30 PM', title: 'Gemini for Marketing & Leasing Managers', department: 'Marketing Leasing', content: `<strong>Task:</strong> Generate social media post ideas and draft engaging ad copy for a mall promotion.<br><strong>Gemini Benefit:</strong> Efficient content creation for marketing campaigns.<br><strong>Hands-on Exercise:</strong> Crafting Promotional Content<br><div class="prompt-code"><strong>Sample Prompt (Social Media):</strong> "Write 3 short and engaging social media posts (suitable for Facebook and Instagram) announcing our new 'Shop & Win' promotion. The promotion runs from [Start Date] to [End Date], offering customers a chance to win [Prize 1], [Prize 2], and [Prize 3] for every RM[Amount] spent. Include relevant emojis and hashtags like #SunwayCarnival #ShopAndWin #GreatDeals."</div><br><div class="prompt-code"><strong>Sample Prompt (Leasing Communication):</strong> "Draft a polite and professional email to a potential new tenant, [Tenant Name] (a [Type of Business] business), inviting them to view a vacant unit at Sunway Carnival Mall. Highlight the mall's high foot traffic, diverse tenant mix, and strategic location. Emphasize the potential for growth. Offer to schedule a meeting at their convenience. Their contact person is [Contact Person's Name]."</div>` },
+                { day: 1, time: '1:30 PM - 2:30 PM', title: 'Gemini for Finance Managers', department: 'Finance', content: `<strong>Task:</strong> Summarize complex financial documents (text excerpts) and generate clear explanations for non-finance colleagues.<br><strong>Gemini Benefit:</strong> Simplified understanding of financial data and improved internal communication.<br><strong>Hands-on Exercise:</strong> Explaining Financial Concepts<br><div class="prompt-code"><strong>Sample Prompt:</strong> "Explain the concept of '[Financial Term, e.g., EBITDA]' in simple terms, as if you are talking to a colleague from the marketing department. Provide a brief example relevant to a shopping mall's operations. The explanation should be concise and easy to understand."</div><br><div class="prompt-code"><strong>Sample Prompt (Textual Summary):</strong> "Summarize the key takeaways from the following financial report excerpt, focusing on revenue performance and significant cost drivers. Make it concise and easy to understand for a general manager: [Paste financial report excerpt here]."</div>` },
+                { day: 1, time: '2:30 PM - 3:45 PM', title: 'Gemini for HR Managers', department: 'HR', content: `<strong>Task:</strong> Draft job descriptions, generate interview questions, and summarize employee feedback or policy documents.<br><strong>Gemini Benefit:</strong> Streamlined HR documentation and communication.<br><strong>Hands-on Exercise:</strong> HR Document Generation<br><div class="prompt-code"><strong>Sample Prompt (Job Description):</strong> "Draft a job description for a 'Customer Service Executive' at Sunway Carnival Mall. Include key responsibilities such as assisting shoppers, handling inquiries, promoting mall services, and resolving complaints. List required qualifications like good communication skills, customer-centric attitude, and proficiency in English and Bahasa Malaysia. Also include desired traits like a positive attitude and problem-solving abilities."</div><br><div class="prompt-code"><strong>Sample Prompt (Interview Questions):</strong> "Generate 5 behavioral interview questions for a 'Maintenance Technician' position, focusing on problem-solving, safety adherence, teamwork, and initiative. For each question, suggest what qualities you would look for in a good answer."</div>` },
+                
+                // Day 2
+                { day: 2, time: '9:00 AM - 10:00 AM', title: 'Gemini for Security Managers', department: 'Security', content: `<strong>Task:</strong> Draft incident reports, create security briefing points, and brainstorm safety protocols.<br><strong>Gemini Benefit:</strong> Standardized reporting and enhanced safety planning.<br><strong>Hands-on Exercise:</strong> Security Documentation & Brainstorming<br><div class="prompt-code"><strong>Sample Prompt (Incident Report Draft):</strong> "Draft a concise incident report for an alleged shoplifting event that occurred on [Date] at approximately [Time] near [Store Name]. A male suspect, described as [description], was observed taking an item and leaving without payment. Security personnel [Officer Name] responded. The item was [description of item]. No apprehension was made. The report needs to be factual and objective."</div><br><div class="prompt-code"><strong>Sample Prompt (Briefing Points):</strong> "Generate 5 key briefing points for the morning security shift, focusing on recent trends in petty theft, upcoming mall events that might affect crowd control, and a reminder about emergency exit procedures."</div>` },
+                { day: 2, time: '10:00 AM - 11:00 AM', title: 'Gemini for Carpark Managers', department: 'Carpark', content: `<strong>Task:</strong> Draft communication for carpark promotions/changes and generate ideas for carpark flow optimization.<br><strong>Gemini Benefit:</strong> Clear communication and innovative operational ideas.<br><strong>Hands-on Exercise:</strong> Carpark Communication & Optimization Ideas<br><div class="prompt-code"><strong>Sample Prompt (Communication):</strong> "Write a public announcement notice (for display at parking payment machines and mall entrances) about a temporary change in our parking rates due to a special event on [Date]. The new rate will be RM[New Rate] per hour, effective from [Start Time] to [End Time]. Normal rates resume afterward. Keep it concise and informative."</div><br><div class="prompt-code"><strong>Sample Prompt (Optimization Ideas):</strong> "Brainstorm 3 innovative ideas to improve traffic flow and reduce congestion in Sunway Carnival Mall's multi-story carpark during peak hours, considering current entry/exit points and payment systems. Focus on practical, implementable solutions."</div>` },
+                { day: 2, time: '11:15 AM - 12:30 PM', title: 'Gemini for Maintenance Managers', department: 'Maintenance', content: `<strong>Task:</strong> Generate maintenance checklists, draft work orders, and outline troubleshooting steps for common equipment issues.<br><strong>Gemini Benefit:</strong> Standardized procedures and quick problem resolution.<br><strong>Hands-on Exercise:</strong> Maintenance Documentation & Troubleshooting<br><div class="prompt-code"><strong>Sample Prompt (Checklist):</strong> "Create a daily maintenance checklist for the mall's restrooms. Include items like checking cleanliness, replenishing supplies (soap, paper towels), ensuring working faucets and toilets, reporting leaks, and emptying trash bins."</div><br><div class="prompt-code"><strong>Sample Prompt (Work Order Draft):</strong> "Draft a work order request for a faulty air-conditioning unit located in [Location, e.g., Food Court - Zone A]. The unit is blowing warm air and making unusual noise. The estimated urgency is 'High' as it impacts customer comfort. Request immediate inspection and repair by a qualified technician."</div>` },
+                { day: 2, time: '1:30 PM - 2:30 PM', title: 'Gemini for Design & Fit Out Services Managers', department: 'Design', content: `<strong>Task:</strong> Brainstorm design concepts (textual descriptions), draft project proposals, and summarize contractor bids.<br><strong>Gemini Benefit:</strong> Enhanced creativity, efficient proposal drafting, and quick bid analysis.<br><strong>Hands-on Exercise:</strong> Design Ideation & Proposal Drafting<br><div class="prompt-code"><strong>Sample Prompt (Design Concept):</strong> "Brainstorm 3 creative and modern interior design concepts for a new lounge area in Sunway Carnival Mall, suitable for visitors to relax and recharge. Each concept should have a unique theme (e.g., 'Tropical Oasis,' 'Urban Chic,' 'Tech Haven') and suggest specific elements like seating, lighting, and decor. The goal is to maximize comfort and aesthetic appeal."</div><br><div class="prompt-code"><strong>Sample Prompt (Proposal Draft):</strong> "Draft a concise project proposal outline for a mall renovation project focused on upgrading the washrooms. Include sections for Project Objectives, Scope of Work, Estimated Timeline, Key Deliverables, and Expected Impact on Customer Experience. The proposal is for internal approval."</div>` },
+                { day: 2, time: '2:30 PM - 3:45 PM', title: 'Advanced Gemini Techniques & Strategic Integration', department: 'General', content: `<strong>Lecture:</strong> Chaining prompts for more complex, multi-step tasks.<br><strong>Lecture:</strong> Using Gemini for basic textual data analysis and strategic decision support (e.g., identifying themes in customer feedback if presented as text).<br><strong>Hands-on Exercise:</strong> Strategic Problem Solving (Case Study)<br><strong>Task:</strong> Use Gemini to analyze a provided scenario (e.g., a customer complaint trend, a challenge in tenant retention) and generate actionable recommendations.<br><strong>Gemini Benefit:</strong> Analytical support and strategic ideation.<br><div class="prompt-code"><strong>Sample Prompt:</strong> "Analyze the following summary of customer feedback received over the past month. Identify the top 3 recurring issues and suggest 2 practical solutions for each issue that Sunway Carnival Mall can implement. Feedback Summary: '[Paste summarized customer feedback text here, e.g., "Frequent complaints about lack of seating in food court, long queues at carpark payment, and limited variety in fashion stores."]'."</div>` },
+            ];
+
+            const day1ModulesContainer = document.getElementById('day-1-modules');
+            const day2ModulesContainer = document.getElementById('day-2-modules');
+            const filteredModulesContainer = document.getElementById('filtered-modules');
+            const departmentFiltersContainer = document.getElementById('department-filters');
+            const noResultsMessage = document.getElementById('no-results');
+
+            const departments = ['All', 'General', 'Marketing', 'Leasing', 'Finance', 'HR', 'Security', 'Carpark', 'Maintenance', 'Design'];
+
+            function createModuleCard(module) {
+                return `
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 transition-all duration-300">
+                        <div class="flex justify-between items-start">
+                             <div class="w-full">
+                                <p class="text-sm font-semibold text-amber-600 mb-1">${module.time}</p>
+                                <h4 class="text-lg font-bold text-gray-800">${module.title}</h4>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-gray-700 text-base leading-relaxed">${module.content}</div>
+                    </div>
+                `;
+            }
+
+            function populateSchedule() {
+                courseData.forEach(module => {
+                    const card = createModuleCard(module);
+                    if (module.day === 1) {
+                        day1ModulesContainer.innerHTML += card;
+                    } else {
+                        day2ModulesContainer.innerHTML += card;
+                    }
+                });
+            }
+
+            function populateFilters() {
+                departments.forEach(dept => {
+                    const button = document.createElement('button');
+                    button.textContent = dept;
+                    button.dataset.department = dept;
+                    button.className = 'px-4 py-2 border-2 border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors duration-200';
+                    if(dept === 'All') {
+                        button.classList.add('active-filter');
+                    }
+                    departmentFiltersContainer.appendChild(button);
+                });
+            }
+            
+            function filterModules(department) {
+                let hasResults = false;
+                filteredModulesContainer.innerHTML = '';
+                const modulesToShow = courseData.filter(m => department === 'All' || m.department.includes(department));
+                
+                if (modulesToShow.length > 0) {
+                    modulesToShow.forEach(module => {
+                        filteredModulesContainer.innerHTML += createModuleCard(module);
+                    });
+                    hasResults = true;
+                }
+                
+                noResultsMessage.classList.toggle('hidden', hasResults);
+                noResultsMessage.textContent = department === 'All' ? 'Select a department to see relevant modules.' : `No specific modules found for the ${department} department. Check the 'General' or 'All' categories.`;
+
+            }
+            
+            departmentFiltersContainer.addEventListener('click', function(e) {
+                if(e.target.tagName === 'BUTTON') {
+                    const selectedDept = e.target.dataset.department;
+                    document.querySelectorAll('#department-filters button').forEach(btn => btn.classList.remove('active-filter'));
+                    e.target.classList.add('active-filter');
+                    filterModules(selectedDept);
+                }
+            });
+
+            const tabs = document.querySelectorAll('[data-view]');
+            const views = {
+                schedule: document.getElementById('schedule-view'),
+                department: document.getElementById('department-view'),
+            };
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active-tab'));
+                    tab.classList.add('active-tab');
+
+                    Object.values(views).forEach(view => view.classList.add('hidden'));
+                    views[tab.dataset.view].classList.remove('hidden');
+                });
+            });
+
+            function createChart() {
+                const ctx = document.getElementById('courseBreakdownChart').getContext('2d');
+                const day1Count = courseData.filter(m => m.day === 1).length;
+                const day2Count = courseData.filter(m => m.day === 2).length;
+                
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Day 1 Modules', 'Day 2 Modules'],
+                        datasets: [{
+                            label: 'Module Count',
+                            data: [day1Count, day2Count],
+                            backgroundColor: [
+                                'rgba(13, 148, 136, 0.7)', // teal-600
+                                'rgba(245, 158, 11, 0.7)'  // amber-500
+                            ],
+                             borderColor: [
+                                'rgba(13, 148, 136, 1)',
+                                'rgba(245, 158, 11, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Course Structure Overview'
+                            }
+                        }
+                    }
+                });
+            }
+
+            populateSchedule();
+            populateFilters();
+            filterModules('All');
+            createChart();
+            noResultsMessage.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
